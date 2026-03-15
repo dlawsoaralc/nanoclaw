@@ -369,31 +369,35 @@ async function runQuery(
   // Load global CLAUDE.md as additional system context (shared across all groups)
   const globalClaudeMdPath = '/workspace/global/CLAUDE.md';
   let globalClaudeMd: string | undefined;
-  if (!containerInput.isMain && fs.existsSync(globalClaudeMdPath)) {
+  if (fs.existsSync(globalClaudeMdPath)) {
     globalClaudeMd = fs.readFileSync(globalClaudeMdPath, 'utf-8');
   }
 
-  // Discover additional directories mounted at /workspace/extra/*
-  // These are passed to the SDK so their CLAUDE.md files are loaded automatically
-  const extraDirs: string[] = [];
+  // Discover additional directories whose CLAUDE.md files are loaded automatically by Claude Code:
+  // - /workspace/global always (shared instructions for all groups)
+  // - /workspace/extra/* (optional mounts)
+  const additionalDirs: string[] = [];
+  if (fs.existsSync('/workspace/global')) {
+    additionalDirs.push('/workspace/global');
+  }
   const extraBase = '/workspace/extra';
   if (fs.existsSync(extraBase)) {
     for (const entry of fs.readdirSync(extraBase)) {
       const fullPath = path.join(extraBase, entry);
       if (fs.statSync(fullPath).isDirectory()) {
-        extraDirs.push(fullPath);
+        additionalDirs.push(fullPath);
       }
     }
   }
-  if (extraDirs.length > 0) {
-    log(`Additional directories: ${extraDirs.join(', ')}`);
+  if (additionalDirs.length > 0) {
+    log(`Additional directories: ${additionalDirs.join(', ')}`);
   }
 
   for await (const message of query({
     prompt: stream,
     options: {
       cwd: '/workspace/group',
-      additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
+      additionalDirectories: additionalDirs.length > 0 ? additionalDirs : undefined,
       resume: sessionId,
       resumeSessionAt: resumeAt,
       systemPrompt: globalClaudeMd

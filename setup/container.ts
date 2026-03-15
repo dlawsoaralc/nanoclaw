@@ -105,7 +105,7 @@ export async function run(args: string[]): Promise<void> {
   try {
     execSync(`${buildCmd} -t ${image} .`, {
       cwd: path.join(projectRoot, 'container'),
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: 'inherit',
     });
     buildOk = true;
     logger.info('Container build succeeded');
