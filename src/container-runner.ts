@@ -4,6 +4,7 @@
  */
 import { ChildProcess, exec, spawn } from 'child_process';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import {
@@ -85,6 +86,26 @@ function buildVolumeMounts(
       containerPath: '/workspace/group',
       readonly: false,
     });
+
+    // Global memory directory (read-only for main too)
+    const globalDir = path.join(GROUPS_DIR, 'global');
+    if (fs.existsSync(globalDir)) {
+      mounts.push({
+        hostPath: globalDir,
+        containerPath: '/workspace/global',
+        readonly: true,
+      });
+    }
+
+    // DJ Claudia skill: mount config dir if it exists (read-write for token cache)
+    const djClaudiaDir = path.join(os.homedir(), '.dj-claudia');
+    if (fs.existsSync(djClaudiaDir)) {
+      mounts.push({
+        hostPath: djClaudiaDir,
+        containerPath: '/home/node/.dj-claudia',
+        readonly: false,
+      });
+    }
   } else {
     // Other groups only get their own folder
     mounts.push({
@@ -230,6 +251,9 @@ function buildContainerArgs(
   } else {
     args.push('-e', 'CLAUDE_CODE_OAUTH_TOKEN=placeholder');
   }
+
+  // DJ Claudia config path inside the container
+  args.push('-e', 'DJ_CLAUDIA_CONFIG_DIR=/home/node/.dj-claudia');
 
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
