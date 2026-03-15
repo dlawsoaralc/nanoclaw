@@ -114,32 +114,9 @@ def resolve_tracks(sp: spotipy.Spotify, track_list: list[str]) -> list[str]:
     return uris
 
 
-def clear_playlist(sp: spotipy.Spotify, playlist_id: str) -> None:
-    """Remove all tracks from the playlist."""
-    # Spotify requires fetching current tracks to remove them
-    results = sp.playlist_items(playlist_id, fields="items.track.uri,next")
-    uris_to_remove = []
-
-    while results:
-        for item in results.get("items", []):
-            if item.get("track") and item["track"].get("uri"):
-                uris_to_remove.append(item["track"]["uri"])
-        if results.get("next"):
-            results = sp.next(results)
-        else:
-            break
-
-    if uris_to_remove:
-        # Spotify allows max 100 tracks per remove call
-        for i in range(0, len(uris_to_remove), 100):
-            batch = uris_to_remove[i:i+100]
-            sp.playlist_remove_all_occurrences_of_items(playlist_id, batch)
-
-
 def update_playlist(sp: spotipy.Spotify, playlist_id: str, uris: list[str]) -> None:
-    """Clear the playlist and add the new tracks in order."""
-    clear_playlist(sp, playlist_id)
-    sp.playlist_add_items(playlist_id, uris)
+    """Replace all playlist tracks atomically (clear + add in one call, max 100)."""
+    sp.playlist_replace_items(playlist_id, uris)
 
 
 def main():
