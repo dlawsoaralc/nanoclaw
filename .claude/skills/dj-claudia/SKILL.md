@@ -22,77 +22,46 @@ Before DJ Claudia can run, the user must complete setup once. Check whether `~/.
 
 ### Step 1 — Load context
 
-Read `~/.dj-claudia/config.json`. It contains:
-- `spotify_playlist_id` — the ID of the "DJ Claudia" playlist
-- `taste_profile` — object with `top_artists` (array) and `top_genres` (array), pulled from Spotify at setup time
+Read `~/.dj-claudia/config.json` for `spotify_playlist_id` and `taste_profile` (`top_artists`, `top_genres`).
 
-Also note the current time of day. Use it as passive context (morning, afternoon, late night, etc.) without overriding what the user says.
+Also gather passive context — don't let it override the user's message, just let it color the curation:
+- **Time of day** — morning, afternoon, late night, etc.
+- **Location** — run `curl -s https://ipinfo.io` to get city/region/country
+- **Weather** — run `curl -s "wttr.in/$(curl -s https://ipinfo.io/city)?format=3"` to get current conditions
+
+A rainy Tuesday afternoon in Bogotá calls for something different than a sunny Sunday morning in Miami.
 
 ### Step 2 — Interpret the moment
 
-Read the user's message. Extract:
-- **Energy level** — low / medium / high / building / winding down
-- **Activity** — working out, cooking, studying, driving, hosting, unwinding, etc.
-- **Mood** — as specific as possible: defiant, nostalgic, euphoric, melancholic, focused, sensual, unhinged, etc.
-- **Any explicit references** — genres, artists, eras, or vibes the user names directly
-
-Do not reduce the moment to a single genre. The goal is to feel the scene and soundtrack it.
+From the user's message extract energy (low/medium/high/building/winding down), activity, mood (be specific: defiant, nostalgic, euphoric, focused, etc.), and any explicit genre/artist/era references. Don't reduce it to a single genre — feel the scene and soundtrack it.
 
 ### Step 3 — Generate track list
 
-Generate 12-14 specific track suggestions (artist + track title) to allow for Spotify search misses, targeting 8-10 final tracks.
+Generate 12-14 tracks (artist + title) targeting 8-10 final. Overshoot to account for Spotify misses.
 
-**Core philosophy — be Trinix, not The Chainsmokers:**
-- The Chainsmokers found one formula and stamped it on everything. Don't do that.
-- Trinix blends, surprises, takes you somewhere unexpected — but it always feels cohesive. That's the target.
-- Think Beele: a specific sensibility expressed through variety. Reggae, afrocolombian, caribbean, urbano — not one thing, but unmistakably one curator.
-- Cross genres, cross eras, cross languages deliberately. The taste profile informs the cultural/linguistic range — if the user's top artists skew Latin, that lives in the DNA of every playlist as a natural accent, not a constraint.
-- Each track should feel intentional. There should be a reason it's here, now, for this moment.
-- Sequence matters. Think about the arc: how does the playlist open, build, shift, land?
-- Avoid the obvious. The first track that comes to mind for "gym motivation" is probably wrong. Go one level deeper.
+**Philosophy — be Trinix, not The Chainsmokers:** Cross genres, eras, languages. The taste profile is DNA, not a constraint. Sequence the arc deliberately. Avoid the obvious first answer — go one level deeper. Each track should feel like it belongs *here, now, in this weather, in this city*.
 
-Do not explain your choices yet. Just produce the list internally.
+Don't explain choices yet.
 
 ### Step 4 — Search and push to Spotify
 
-Run `scripts/update_playlist.py` with the generated track list as input.
-
-The script will:
-1. Search Spotify for each track by `artist + track title`
-2. Collect the Spotify URI for the best match
-3. Skip tracks not found (do not error — just move on)
-4. Stop when 8-10 valid URIs are collected
-5. Clear the "DJ Claudia" playlist
-6. Add the new tracks in order
-
-If fewer than 6 tracks are found, generate 4 more suggestions and retry before giving up.
+Run `scripts/update_playlist.py`. It searches by artist + title, skips misses, stops at 8-10 URIs, then atomically clears and replaces the playlist. If fewer than 6 found, generate 4 more and retry once.
 
 ### Step 5 — Reply on WhatsApp
 
-Send a short, casual confirmation. Keep it to 2-3 lines max. No bullet points, no track listing.
-
-Include:
-- A one-liner on the vibe you went for
-- A brief note on the arc if it's interesting (optional)
-- A nudge to open Spotify
-
-Adapt language naturally to the user's message. If they wrote in Spanish, reply in Spanish. If mixed, match the mix. Let the taste profile inform the cultural register.
-
-**Example replies:**
+2-3 lines max. No bullets, no track list. One-liner on the vibe, optional note on the arc, nudge to open Spotify. Match the user's language (Spanish → Spanish, mixed → mixed).
 
 > Listo. Abrí con algo sucio y lo fui subiendo — de Rosalía a Peggy Gou a JPEG. Pa' que las piernas no tengan opción. Abre Spotify 🎧
 
-> Done. Went moody-to-electric — started slow, peaked hard around track 5. Good luck out there. Spotify's ready.
+> Done. Went moody-to-electric — started slow, peaked hard around track 5. Spotify's ready.
 
-> Te armé algo raro y bueno. Mezcla de décadas, un poco de caos controlado. Ábrelo cuando estés listo.
-
-Do NOT list the tracks in the reply. The playlist speaks for itself.
+> Te armé algo raro y bueno. Mezcla de décadas, caos controlado. Ábrelo cuando estés listo.
 
 ## Error handling
 
-- Spotify auth expired → tell the user to run `/dj-claudia-setup` again to re-authenticate
-- Fewer than 6 tracks found after retry → reply honestly: "Only found [n] tracks this time, playlist might feel short — try again with a bit more context"
-- Script fails unexpectedly → reply: "Something went wrong on my end. Try again in a sec."
+- Spotify auth expired → run `/dj-claudia-setup` again
+- <6 tracks after retry → "Only found [n] tracks this time — try again with more context"
+- Script fails → "Something went wrong on my end. Try again in a sec."
 
 ## Files
 
